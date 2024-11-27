@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.20;
 
-import "./Signable.sol";
-import "../interfaces/ITimelock.sol";
-import "../libs/TimelockLibrary.sol";
+import {Signable} from "./Signable.sol";
+import {ITimelock} from "../interfaces/ITimelock.sol";
+import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
 
 contract Multisig is Signable {
     enum Status {
@@ -49,9 +49,7 @@ contract Multisig is Signable {
     event Executed(uint256 id);
     event Cancelled(uint256 id);
 
-    constructor(address _timelock, address[] memory _accounts)
-        Signable(_accounts)
-    {
+    constructor(address _timelock, address[] memory _accounts) Signable(_accounts) {
         require(_timelock != address(0), "Timelock zero");
 
         timelock = _timelock;
@@ -67,8 +65,8 @@ contract Multisig is Signable {
     ) external onlySigner {
         require(
             targets.length == values.length &&
-            targets.length == signatures.length &&
-            targets.length == calldatas.length,
+                targets.length == signatures.length &&
+                targets.length == calldatas.length,
             "Wrong arrays length"
         );
 
@@ -111,15 +109,7 @@ contract Multisig is Signable {
                 txn.data = proposal.calldatas[i];
                 txn.eta = proposal.eta;
                 txn.hash = keccak256(
-                    abi.encode(
-                        _proposalId,
-                        i,
-                        txn.target,
-                        txn.value,
-                        txn.signature,
-                        txn.data,
-                        txn.eta
-                    )
+                    abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, txn.eta)
                 );
                 txn.callFrom = proposal.callFrom;
 
@@ -131,11 +121,7 @@ contract Multisig is Signable {
     }
 
     // _paidFromStorage - if call withdraw or ether should be paid from storage contract
-    function execute(uint256 _proposalId, bool _paidFromStorage)
-        public
-        payable
-        onlySigner
-    {
+    function execute(uint256 _proposalId, bool _paidFromStorage) public payable onlySigner {
         if (_paidFromStorage) {
             require(msg.value == 0, "Pay from storage");
         }
@@ -151,22 +137,10 @@ contract Multisig is Signable {
             txn.signature = proposal.signatures[i];
             txn.data = proposal.calldatas[i];
             txn.eta = proposal.eta;
-            txn.hash = keccak256(
-                abi.encode(
-                    _proposalId,
-                    i,
-                    txn.target,
-                    txn.value,
-                    txn.signature,
-                    txn.data,
-                    txn.eta
-                )
-            );
+            txn.hash = keccak256(abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, txn.eta));
             txn.callFrom = proposal.callFrom;
 
-            ITimelock(timelock).executeTransaction{
-                value: (_paidFromStorage) ? 0 : txn.value
-            }(txn);
+            ITimelock(timelock).executeTransaction{value: (_paidFromStorage) ? 0 : txn.value}(txn);
         }
 
         emit Executed(_proposalId);
@@ -175,10 +149,7 @@ contract Multisig is Signable {
     function cancel(uint256 _proposalId) external onlySigner {
         Status status = getStatus(_proposalId);
 
-        require(
-            status == Status.INITIALIZED || status == Status.QUEUED,
-            "Wrong status"
-        );
+        require(status == Status.INITIALIZED || status == Status.QUEUED, "Wrong status");
 
         Proposal storage proposal = proposals[_proposalId];
         proposal.status = Status.CANCELLED;
@@ -190,17 +161,7 @@ contract Multisig is Signable {
             txn.signature = proposal.signatures[i];
             txn.data = proposal.calldatas[i];
             txn.eta = proposal.eta;
-            txn.hash = keccak256(
-                abi.encode(
-                    _proposalId,
-                    i,
-                    txn.target,
-                    txn.value,
-                    txn.signature,
-                    txn.data,
-                    txn.eta
-                )
-            );
+            txn.hash = keccak256(abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, txn.eta));
             txn.callFrom = proposal.callFrom;
 
             ITimelock(timelock).cancelTransaction(txn);
@@ -209,7 +170,9 @@ contract Multisig is Signable {
         emit Cancelled(_proposalId);
     }
 
-    function getActions(uint256 _proposalId)
+    function getActions(
+        uint256 _proposalId
+    )
         external
         view
         returns (

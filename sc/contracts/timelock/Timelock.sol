@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../interfaces/ISafeStorage.sol";
-import "../libs/TimelockLibrary.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import {ISafeStorage} from "../interfaces/ISafeStorage.sol";
+import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
 
 contract Timelock is Ownable {
     using SafeMath for uint256;
@@ -56,18 +56,9 @@ contract Timelock is Ownable {
         uint256 eta
     );
 
-    constructor(
-        address _safeStorage,
-        uint256 _delay
-    ) {
-        require(
-            _delay >= MINIMUM_DELAY,
-            "Timelock::constructor: Delay must exceed minimum delay."
-        );
-        require(
-            _delay <= MAXIMUM_DELAY,
-            "Timelock::constructor: Delay must not exceed maximum delay."
-        );
+    constructor(address _safeStorage, uint256 _delay) {
+        require(_delay >= MINIMUM_DELAY, "Timelock::constructor: Delay must exceed minimum delay.");
+        require(_delay <= MAXIMUM_DELAY, "Timelock::constructor: Delay must not exceed maximum delay.");
 
         safeStorage = _safeStorage;
         delay = _delay;
@@ -80,14 +71,8 @@ contract Timelock is Ownable {
     }
 
     function setDelay(uint256 _delay) public onlyThis {
-        require(
-            _delay >= MINIMUM_DELAY,
-            "Timelock::setDelay: Delay must exceed minimum delay."
-        );
-        require(
-            _delay <= MAXIMUM_DELAY,
-            "Timelock::setDelay: Delay must not exceed maximum delay."
-        );
+        require(_delay >= MINIMUM_DELAY, "Timelock::setDelay: Delay must exceed minimum delay.");
+        require(_delay <= MAXIMUM_DELAY, "Timelock::setDelay: Delay must not exceed maximum delay.");
         delay = _delay;
 
         emit NewDelay(delay);
@@ -101,39 +86,17 @@ contract Timelock is Ownable {
 
         queuedTransactions[_tx.hash] = true;
 
-        emit QueueTransaction(
-            _tx.hash,
-            _tx.target,
-            _tx.value,
-            _tx.signature,
-            _tx.data,
-            _tx.eta
-        );
+        emit QueueTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
     }
 
     function cancelTransaction(Transaction memory _tx) public onlyOwner {
         queuedTransactions[_tx.hash] = false;
 
-        emit CancelTransaction(
-            _tx.hash,
-            _tx.target,
-            _tx.value,
-            _tx.signature,
-            _tx.data,
-            _tx.eta
-        );
+        emit CancelTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
     }
 
-    function executeTransaction(Transaction memory _tx)
-        public
-        payable
-        onlyOwner
-        returns (bytes memory returnData)
-    {
-        require(
-            queuedTransactions[_tx.hash],
-            "Timelock::executeTransaction: Transaction hasn't been queued."
-        );
+    function executeTransaction(Transaction memory _tx) public payable onlyOwner returns (bytes memory returnData) {
+        require(queuedTransactions[_tx.hash], "Timelock::executeTransaction: Transaction hasn't been queued.");
         require(
             _getBlockTimestamp() >= _tx.eta,
             "Timelock::executeTransaction: Transaction hasn't surpassed time lock."
@@ -148,37 +111,22 @@ contract Timelock is Ownable {
         bool success;
         if (_tx.callFrom == safeStorage) {
             // solium-disable-next-line security/no-call-value
-            (success, returnData) = ISafeStorage(safeStorage).execute{
-                value: msg.value
-            }(_tx.target, _tx.value, _tx.data);
-
-            emit ExecuteTransaction(
-                _tx.hash,
+            (success, returnData) = ISafeStorage(safeStorage).execute{value: msg.value}(
                 _tx.target,
                 _tx.value,
-                _tx.signature,
-                _tx.data,
-                _tx.eta
+                _tx.data
             );
+
+            emit ExecuteTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
 
             return returnData;
         }
 
         // solium-disable-next-line security/no-call-value
         (success, returnData) = _tx.target.call{value: _tx.value}(_tx.data);
-        require(
-            success,
-            "Timelock::executeTransaction: Transaction execution reverted."
-        );
+        require(success, "Timelock::executeTransaction: Transaction execution reverted.");
 
-        emit ExecuteTransaction(
-            _tx.hash,
-            _tx.target,
-            _tx.value,
-            _tx.signature,
-            _tx.data,
-            _tx.eta
-        );
+        emit ExecuteTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
 
         return returnData;
     }
@@ -189,10 +137,7 @@ contract Timelock is Ownable {
     }
 
     modifier onlyThis() {
-        require(
-            msg.sender == address(this),
-            "Timelock: Call must come from this contract."
-        );
+        require(msg.sender == address(this), "Timelock: Call must come from this contract.");
         _;
     }
 }

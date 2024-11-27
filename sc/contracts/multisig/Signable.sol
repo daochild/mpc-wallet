@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.20;
 
 contract Signable {
     uint256 public constant MIN_NUM_SIGNERS = 4;
@@ -16,10 +16,7 @@ contract Signable {
     event SignerChanged(address prev, address next);
 
     constructor(address[] memory _accounts) {
-        require(
-            _accounts.length >= MIN_NUM_SIGNERS,
-            "Num signers consensus not reached"
-        );
+        require(_accounts.length >= MIN_NUM_SIGNERS, "Num signers consensus not reached");
 
         for (uint256 i; i < _accounts.length; i++) {
             _setSigner(_accounts[i], true);
@@ -34,10 +31,7 @@ contract Signable {
             return _requiredSigns;
         }
 
-        return
-            (_requiredSigns < (totalSigners * 3) / 4)
-                ? (totalSigners * 3) / 4
-                : _requiredSigns;
+        return (_requiredSigns < (totalSigners * 3) / 4) ? (totalSigners * 3) / 4 : _requiredSigns;
     }
 
     // @dev should be called if it is possible as second method in batch transaction
@@ -90,10 +84,7 @@ contract Signable {
     }
 
     modifier onlyThis() {
-        require(
-            msg.sender == address(this),
-            "Call must come from this contract."
-        );
+        require(msg.sender == address(this), "Call must come from this contract.");
         _;
     }
 }

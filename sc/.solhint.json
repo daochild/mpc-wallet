@@ -2,25 +2,25 @@
   "extends": "solhint:recommended",
   "plugins": [],
   "rules": {
-    "indent": "warn",
     "const-name-snakecase": "warn",
     "max-line-length": [
       "warn",
-      80
+      120
     ],
+    "indent": "4",
+    "state-visibility": "warn",
     "avoid-suicide": "error",
     "avoid-sha3": "warn",
-    "func-order": "off",
+    "ordering": "warn",
     "mark-callable-contracts": "off",
     "no-empty-blocks": "off",
-    "compiler-version": "off",
-    "private-vars-leading-underscore": "error",
-    "reason-string": "off",
-    "func-visibility": [
-      "error", {
-        "ignoreConstructors": true
-      }
-    ],
+    "compiler-version": ["error",">=0.8.4"],
+    "no-unused-vars": "warn",
+    "private-vars-leading-underscore": "warn",
+    "reason-string": ["warn",{"maxLength":32}],
+    "reentrancy": "warn",
+    "check-send-result": "warn",
+    "func-visibility": ["warn",{"ignoreConstructors":true}],
     "quotes": [
       "error",
       "double"
