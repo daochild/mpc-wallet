@@ -2,13 +2,10 @@
 
 pragma solidity ^0.8.20;
 
+import {MIN_NUM_SIGNERS, MAX_NUM_SIGNERS} from "../types.sol";
+
 contract Signable {
-    uint256 public constant MIN_NUM_SIGNERS = 4;
-    uint256 public constant MAX_NUM_SIGNERS = 100;
-    uint256 public constant TIME_FOR_SIGNING = 1 days;
-
     uint256 public totalSigners;
-
     uint256 private _requiredSigns;
 
     mapping(address => bool) private _signers;

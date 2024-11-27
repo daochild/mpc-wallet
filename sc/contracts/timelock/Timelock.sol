@@ -5,23 +5,11 @@ pragma solidity ^0.8.20;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {ISafeStorage} from "../interfaces/ISafeStorage.sol";
-import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
+import {ITimelock} from "../interfaces/ITimelock.sol";
+import {Transaction, GRACE_PERIOD, MINIMUM_DELAY, MAXIMUM_DELAY} from "../types.sol";
 
-contract Timelock is Ownable {
+contract Timelock is Ownable, ITimelock {
     using SafeMath for uint256;
-
-    struct Transaction {
-        address callFrom;
-        bytes32 hash;
-        address target;
-        uint256 value;
-        string signature;
-        bytes data;
-        uint256 eta;
-    }
-
-    uint256 public constant MINIMUM_DELAY = 6 hours;
-    uint256 public constant MAXIMUM_DELAY = 30 days;
 
     address public safeStorage;
     uint256 public delay;
@@ -102,7 +90,7 @@ contract Timelock is Ownable {
             "Timelock::executeTransaction: Transaction hasn't surpassed time lock."
         );
         require(
-            _getBlockTimestamp() <= _tx.eta.add(TimelockLibrary.GRACE_PERIOD),
+            _getBlockTimestamp() <= _tx.eta.add(GRACE_PERIOD),
             "Timelock::executeTransaction: Transaction is stale."
         );
 

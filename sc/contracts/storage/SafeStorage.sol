@@ -3,12 +3,13 @@
 pragma solidity ^0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {ERC1155Holder, ERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import {ERC165Storage} from "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import {ERC1155Holder, ERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ISafeStorage} from "../interfaces/ISafeStorage.sol";
 
-contract SafeStorage is ERC165Storage, Ownable, ERC721Holder, ERC1155Holder {
+contract SafeStorage is ERC165Storage, Ownable, ERC721Holder, ERC1155Holder, ISafeStorage {
     event Received(address indexed from, uint256 indexed amount);
     event ReceivedFallback(address indexed from, uint256 indexed amount);
 
@@ -27,7 +28,7 @@ contract SafeStorage is ERC165Storage, Ownable, ERC721Holder, ERC1155Holder {
     function execute(
         address _target,
         uint256 _value,
-        bytes memory _data
+        bytes calldata _data
     ) external payable virtual onlyOwner returns (bool success, bytes memory result) {
         require(address(this).balance + msg.value >= _value, "low ether balance");
 

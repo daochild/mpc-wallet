@@ -4,45 +4,15 @@ pragma solidity ^0.8.20;
 
 import {Signable} from "./Signable.sol";
 import {ITimelock} from "../interfaces/ITimelock.sol";
-import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
+import {Status, Proposal, Transaction, GRACE_PERIOD, TIME_FOR_SIGNING} from "../types.sol";
 
 contract Multisig is Signable {
-    enum Status {
-        EMPTY, // zero state
-        INITIALIZED, // created with one sign
-        CANCELLED, // canceled by consensus
-        QUEUED, // approved and send to timelock
-        EXECUTED // executed
-    }
-
-    struct Proposal {
-        // @dev actual signs
-        uint256 signs;
-        Status status;
-        /// @notice Creator of the proposal
-        address proposer;
-        /// @notice The timestamp that the proposal will be available for execution, set once the vote succeeds
-        uint256 eta;
-        /// @notice the ordered list of target addresses for calls to be made
-        address[] targets;
-        /// @notice The ordered list of values (i.e. msg.value) to be passed to the calls to be made
-        uint256[] values;
-        /// @notice The ordered list of function signatures to be called
-        string[] signatures;
-        /// @notice The ordered list of calldata to be passed to each call
-        bytes[] calldatas;
-        address callFrom;
-        string description;
-        uint256 initiatedAt;
-    }
+    /// @notice The total number of proposals
+    uint256 public proposalCount;
+    address public timelock;
 
     mapping(uint256 => Proposal) public proposals;
     mapping(address => mapping(uint256 => bool)) public votedBy;
-
-    /// @notice The total number of proposals
-    uint256 public proposalCount;
-
-    address public timelock;
 
     event ProposalInitialized(uint256 id, address proposer);
     event Signed(uint256 id, address signer);
@@ -101,7 +71,7 @@ contract Multisig is Signable {
         if (proposal.signs == requiredSigns()) {
             proposal.status = Status.QUEUED; // block status
             proposal.eta = ITimelock(timelock).delay() + block.timestamp;
-            TimelockLibrary.Transaction memory txn;
+            Transaction memory txn;
             for (uint256 i; i < proposal.targets.length; i++) {
                 txn.target = proposal.targets[i];
                 txn.value = proposal.values[i];
@@ -130,7 +100,7 @@ contract Multisig is Signable {
 
         Proposal storage proposal = proposals[_proposalId];
         proposal.status = Status.EXECUTED; // block status
-        TimelockLibrary.Transaction memory txn;
+        Transaction memory txn;
         for (uint256 i; i < proposal.targets.length; i++) {
             txn.target = proposal.targets[i];
             txn.value = proposal.values[i];
@@ -154,7 +124,7 @@ contract Multisig is Signable {
         Proposal storage proposal = proposals[_proposalId];
         proposal.status = Status.CANCELLED;
 
-        TimelockLibrary.Transaction memory txn;
+        Transaction memory txn;
         for (uint256 i; i < proposal.targets.length; i++) {
             txn.target = proposal.targets[i];
             txn.value = proposal.values[i];
@@ -197,7 +167,7 @@ contract Multisig is Signable {
         }
         if (p.signs > 0) {
             if (p.eta != 0) {
-                if (p.eta + TimelockLibrary.GRACE_PERIOD <= block.timestamp) {
+                if (p.eta + GRACE_PERIOD <= block.timestamp) {
                     return Status.CANCELLED;
                 }
             } else {
