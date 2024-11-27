@@ -1,4 +1,1 @@
-contracts/mocks/
-contracts/uniswapv2/
-contracts/aliumswap/
-contracts/libraries/
+contracts/test/

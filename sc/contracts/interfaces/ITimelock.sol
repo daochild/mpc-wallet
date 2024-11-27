@@ -1,22 +1,17 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.20;
 
-import "../libs/TimelockLibrary.sol";
+import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
 
 interface ITimelock {
     function delay() external view returns (uint256);
 
-    function queueTransaction(TimelockLibrary.Transaction calldata txn)
-        external;
+    function queueTransaction(TimelockLibrary.Transaction calldata txn) external;
 
-    function cancelTransaction(TimelockLibrary.Transaction calldata txn)
-        external;
+    function cancelTransaction(TimelockLibrary.Transaction calldata txn) external;
 
-    function executeTransaction(TimelockLibrary.Transaction calldata txn)
-        external
-        payable
-        returns (bytes memory);
+    function executeTransaction(TimelockLibrary.Transaction calldata txn) external payable returns (bytes memory);
 
     function acceptAdmin() external;
 

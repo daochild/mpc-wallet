@@ -1,6 +1,6 @@
 {
-  "name": "server",
-  "version": "0.0.0",
+  "name": "@daochild/mpc_wallet-server",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
     "start": "node ./bin/www"

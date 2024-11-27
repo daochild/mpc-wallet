@@ -1,0 +1,82 @@
+networks:
+  daochild_mpc:
+    driver: bridge
+
+# More security for keys: https://docs.docker.com/compose/how-tos/use-secrets/
+#secrets:
+#  hardhat_secret:
+#    file: ./secrets/hardhat_api_key
+#  web_secret:
+#    file: ./secrets/web_api_key
+#  server_secret:
+#    file: ./secrets/server_api_key
+
+services:
+  hardhat:
+    build:
+      context: ./sc
+    container_name: daochild_mpc_hardhat-node
+    networks:
+      - daochild_mpc
+    volumes:
+      - daochild_mpc_hardhat:/app
+    command: sh -c "npm install && npx hardhat node"
+    ports:
+      - "127.0.0.1:8545:8545" # Exposing Hardhat on its default port
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  web:
+    build:
+      context: ./web
+    container_name: daochild_mpc_web-app
+    networks:
+      - daochild_mpc
+    depends_on:
+      - hardhat
+    volumes:
+      - daochild_mpc_web:/app
+    command: sh -c "npm install && npm start"
+    ports:
+      - "127.0.0.1:3000:3000" # React app running on port 3000
+    environment:
+      REACT_APP_HARDHAT_URL: http://hardhat:8545 # Using the Hardhat service within the container network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  server:
+    build:
+      context: ./server
+    container_name: daochild_mpc_node-app
+    networks:
+      - daochild_mpc
+    depends_on:
+      - hardhat
+      - web
+    volumes:
+      - daochild_mpc_server:/app
+    command: sh -c "npm install && node server.js"
+    ports:
+      - "127.0.0.1:5000:5000" # Node.js server on port 5000
+    environment:
+      HARDHAT_URL: http://hardhat:8545 # Connection to Hardhat service
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  daochild_mpc_hardhat:
+  daochild_mpc_web:
+  daochild_mpc_server:
+

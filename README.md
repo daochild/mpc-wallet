@@ -1,20 +1,8 @@
-# safe-storage-monorepo
+# MPC Wallet
 
-## #server
+### DISCLAIMER: This project is in development and not ready for production use.
 
-**Install application**
+Server and web in development not ready for production use.
 
-on MAC/Ubuntu
-
-Install Node.js cli 10,12,14 version LTS    
-https://nodejs.org/en/
-
-In console type (*It should install yarn and project dependencies):    
-```./install.bash```    
-
-**Run application**
-
-From file explorer on MAC you can run ```start-mac.command``` executable file.
-Or type in console ```./start.bash``` 
-
-Application will be hosted on http://localhost:3000/
+Contract can be deployed and used, but they are NOT third-party audited, anyway it was checked with automatic audit tools and 
+covered unit test.
