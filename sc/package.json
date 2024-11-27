@@ -1,5 +1,22 @@
 {
-  "name": "hardhat-project",
+  "name": "@daochild/mpc_wallet-contract",
+  "version": "1.0.1",
+  "description": "MPC Wallet contract",
+  "private": true,
+  "scripts": {
+    "build": "npx hardhat compile",
+    "dev": "npx hardhat node",
+    "test": "npx hardhat test",
+    "dist": "npx waffle flatten",
+    "lint": "solhint 'contracts/**/*.sol' --ignore-path .solhintignore",
+    "prettier": "npx prettier --write ./contracts/**/*.sol",
+    "lint:js": "eslint .",
+    "lint:js:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.3.0",
+    "install-peers": "^1.0.4"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@types/node": "^20.12.7",
@@ -17,19 +34,5 @@
     "solidity-parse": "^0.0.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "^4.3.0",
-    "install-peers": "^1.0.4"
-  },
-  "scripts": {
-    "build": "npx hardhat compile",
-    "dev": "npx hardhat node",
-    "test": "npx hardhat test",
-    "dist": "npx waffle flatten",
-    "lint": "solhint 'contracts/**/*.sol' --ignore-path .solhintignore",
-    "prettier": "npx prettier --write ./contracts/**/*.sol",
-    "lint:js": "eslint .",
-    "lint:js:fix": "eslint . --fix"
   }
 }
