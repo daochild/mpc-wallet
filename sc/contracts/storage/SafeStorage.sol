@@ -13,6 +13,8 @@ contract SafeStorage is ERC165Storage, Ownable, ERC721Holder, ERC1155Holder, ISa
     event Received(address indexed from, uint256 indexed amount);
     event ReceivedFallback(address indexed from, uint256 indexed amount);
 
+    error NotEnoughEtherForCall();
+
     fallback() external payable {
         if (msg.value > 0) {
             emit ReceivedFallback(msg.sender, msg.value);
@@ -30,7 +32,7 @@ contract SafeStorage is ERC165Storage, Ownable, ERC721Holder, ERC1155Holder, ISa
         uint256 _value,
         bytes calldata _data
     ) external payable virtual onlyOwner returns (bool success, bytes memory result) {
-        require(address(this).balance + msg.value >= _value, "low ether balance");
+        require(address(this).balance + msg.value >= _value, NotEnoughEtherForCall());
 
         (success, result) = _target.call{value: _value}(_data);
 
