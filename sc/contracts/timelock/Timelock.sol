@@ -16,6 +16,16 @@ contract Timelock is Ownable, ITimelock {
 
     mapping(bytes32 => bool) public queuedTransactions;
 
+    error DirectEthDeposit();
+    error TimelockDelayTooShort();
+    error TimelockDelayTooLong();
+    error TimelockQueueTransactionDelay();
+    error TimelockTransactionNotQueue();
+    error TimelockEtaNotReached();
+    error TimelockTransactionExpired();
+    error TimelockExecutionFailed();
+    error TimelockOnlyThisContract();
+
     event NewAdmin(address indexed newAdmin);
     event NewPendingAdmin(address indexed newPendingAdmin);
     event NewDelay(uint256 indexed newDelay);
@@ -45,8 +55,8 @@ contract Timelock is Ownable, ITimelock {
     );
 
     constructor(address _safeStorage, uint256 _delay) {
-        require(_delay >= MINIMUM_DELAY, "Timelock::constructor: Delay must exceed minimum delay.");
-        require(_delay <= MAXIMUM_DELAY, "Timelock::constructor: Delay must not exceed maximum delay.");
+        require(_delay >= MINIMUM_DELAY, TimelockDelayTooShort());
+        require(_delay <= MAXIMUM_DELAY, TimelockDelayTooLong());
 
         safeStorage = _safeStorage;
         delay = _delay;
@@ -55,12 +65,13 @@ contract Timelock is Ownable, ITimelock {
     fallback() external payable {}
 
     receive() external payable {
-        require(false, "Dont accept direct ether deposit");
+        require(false, DirectEthDeposit());
     }
 
     function setDelay(uint256 _delay) public onlyThis {
-        require(_delay >= MINIMUM_DELAY, "Timelock::setDelay: Delay must exceed minimum delay.");
-        require(_delay <= MAXIMUM_DELAY, "Timelock::setDelay: Delay must not exceed maximum delay.");
+        require(_delay >= MINIMUM_DELAY, TimelockDelayTooShort());
+        require(_delay <= MAXIMUM_DELAY, TimelockDelayTooLong());
+
         delay = _delay;
 
         emit NewDelay(delay);
@@ -69,7 +80,7 @@ contract Timelock is Ownable, ITimelock {
     function queueTransaction(Transaction memory _tx) public onlyOwner {
         require(
             _tx.eta >= _getBlockTimestamp().add(delay),
-            "Timelock::queueTransaction: Estimated execution block must satisfy delay."
+            TimelockQueueTransactionDelay()
         );
 
         queuedTransactions[_tx.hash] = true;
@@ -84,14 +95,14 @@ contract Timelock is Ownable, ITimelock {
     }
 
     function executeTransaction(Transaction memory _tx) public payable onlyOwner returns (bytes memory returnData) {
-        require(queuedTransactions[_tx.hash], "Timelock::executeTransaction: Transaction hasn't been queued.");
+        require(queuedTransactions[_tx.hash], TimelockTransactionNotQueue());
         require(
             _getBlockTimestamp() >= _tx.eta,
-            "Timelock::executeTransaction: Transaction hasn't surpassed time lock."
+            TimelockEtaNotReached()
         );
         require(
             _getBlockTimestamp() <= _tx.eta.add(GRACE_PERIOD),
-            "Timelock::executeTransaction: Transaction is stale."
+            TimelockTransactionExpired()
         );
 
         queuedTransactions[_tx.hash] = false;
@@ -112,7 +123,7 @@ contract Timelock is Ownable, ITimelock {
 
         // solium-disable-next-line security/no-call-value
         (success, returnData) = _tx.target.call{value: _tx.value}(_tx.data);
-        require(success, "Timelock::executeTransaction: Transaction execution reverted.");
+        require(success, TimelockExecutionFailed());
 
         emit ExecuteTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
 
@@ -125,7 +136,7 @@ contract Timelock is Ownable, ITimelock {
     }
 
     modifier onlyThis() {
-        require(msg.sender == address(this), "Timelock: Call must come from this contract.");
+        require(msg.sender == address(this), TimelockOnlyThisContract());
         _;
     }
 }
