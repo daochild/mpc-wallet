@@ -43,8 +43,8 @@ contract Multisig is Signable {
     ) external onlySigner {
         require(
             targets.length == values.length &&
-            targets.length == signatures.length &&
-            targets.length == calldatas.length,
+                targets.length == signatures.length &&
+                targets.length == calldatas.length,
             WrongArraysLength()
         );
 

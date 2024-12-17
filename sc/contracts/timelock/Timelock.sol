@@ -78,10 +78,7 @@ contract Timelock is Ownable, ITimelock {
     }
 
     function queueTransaction(Transaction memory _tx) public onlyOwner {
-        require(
-            _tx.eta >= _getBlockTimestamp().add(delay),
-            TimelockQueueTransactionDelay()
-        );
+        require(_tx.eta >= _getBlockTimestamp().add(delay), TimelockQueueTransactionDelay());
 
         queuedTransactions[_tx.hash] = true;
 
@@ -96,14 +93,8 @@ contract Timelock is Ownable, ITimelock {
 
     function executeTransaction(Transaction memory _tx) public payable onlyOwner returns (bytes memory returnData) {
         require(queuedTransactions[_tx.hash], TimelockTransactionNotQueue());
-        require(
-            _getBlockTimestamp() >= _tx.eta,
-            TimelockEtaNotReached()
-        );
-        require(
-            _getBlockTimestamp() <= _tx.eta.add(GRACE_PERIOD),
-            TimelockTransactionExpired()
-        );
+        require(_getBlockTimestamp() >= _tx.eta, TimelockEtaNotReached());
+        require(_getBlockTimestamp() <= _tx.eta.add(GRACE_PERIOD), TimelockTransactionExpired());
 
         queuedTransactions[_tx.hash] = false;
 
