@@ -14,13 +14,21 @@ contract Multisig is Signable {
     mapping(uint256 => Proposal) public proposals;
     mapping(address => mapping(uint256 => bool)) public votedBy;
 
+    error TimelockZero();
+    error WrongArraysLength();
+    error WrongStatus();
+    error AlreadySigned();
+    error PayFromStorage();
+    error OnlyAdmin();
+    error AdminCallFailed();
+
     event ProposalInitialized(uint256 id, address proposer);
     event Signed(uint256 id, address signer);
     event Executed(uint256 id);
     event Cancelled(uint256 id);
 
     constructor(address _timelock, address[] memory _accounts) Signable(_accounts) {
-        require(_timelock != address(0), "Timelock zero");
+        require(_timelock != address(0), TimelockZero());
 
         timelock = _timelock;
     }
@@ -35,9 +43,9 @@ contract Multisig is Signable {
     ) external onlySigner {
         require(
             targets.length == values.length &&
-                targets.length == signatures.length &&
-                targets.length == calldatas.length,
-            "Wrong arrays length"
+            targets.length == signatures.length &&
+            targets.length == calldatas.length,
+            WrongArraysLength()
         );
 
         Proposal memory proposal;
@@ -61,8 +69,8 @@ contract Multisig is Signable {
     }
 
     function sign(uint256 _proposalId) external onlySigner {
-        require(getStatus(_proposalId) == Status.INITIALIZED, "Wrong status");
-        require(!votedBy[msg.sender][_proposalId], "Already signed");
+        require(getStatus(_proposalId) == Status.INITIALIZED, WrongStatus());
+        require(!votedBy[msg.sender][_proposalId], AlreadySigned());
 
         votedBy[msg.sender][_proposalId] = true;
 
@@ -93,10 +101,10 @@ contract Multisig is Signable {
     // _paidFromStorage - if call withdraw or ether should be paid from storage contract
     function execute(uint256 _proposalId, bool _paidFromStorage) public payable onlySigner {
         if (_paidFromStorage) {
-            require(msg.value == 0, "Pay from storage");
+            require(msg.value == 0, PayFromStorage());
         }
 
-        require(getStatus(_proposalId) == Status.QUEUED, "Wrong status");
+        require(getStatus(_proposalId) == Status.QUEUED, WrongStatus());
 
         Proposal storage proposal = proposals[_proposalId];
         proposal.status = Status.EXECUTED; // block status
@@ -119,7 +127,7 @@ contract Multisig is Signable {
     function cancel(uint256 _proposalId) external onlySigner {
         Status status = getStatus(_proposalId);
 
-        require(status == Status.INITIALIZED || status == Status.QUEUED, "Wrong status");
+        require(status == Status.INITIALIZED || status == Status.QUEUED, WrongStatus());
 
         Proposal storage proposal = proposals[_proposalId];
         proposal.status = Status.CANCELLED;
@@ -189,10 +197,10 @@ contract Multisig is Signable {
     // @dev method should be called only from timelock contract.
     // Use this one for changes admin data.
     function adminCall(bytes memory data) public {
-        require(msg.sender == timelock, "Only timelock");
+        require(msg.sender == timelock, OnlyAdmin());
 
         (bool success, ) = address(this).call(data);
 
-        require(success, "admin call failed");
+        require(success, AdminCallFailed());
     }
 }

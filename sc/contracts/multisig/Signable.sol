@@ -10,10 +10,19 @@ contract Signable {
 
     mapping(address => bool) private _signers;
 
+    error NotEnoughSigns();
+    error NUM_SIGS_CONS();
+    error CONS_REQU_SIGNS();
+    error NotSigner();
+    error AlreadySigner();
+    error WrongAddressSet();
+    error OnlySigner();
+    error OnlyThis();
+
     event SignerChanged(address prev, address next);
 
     constructor(address[] memory _accounts) {
-        require(_accounts.length >= MIN_NUM_SIGNERS, "Num signers consensus not reached");
+        require(_accounts.length >= MIN_NUM_SIGNERS, NotEnoughSigns());
 
         for (uint256 i; i < _accounts.length; i++) {
             _setSigner(_accounts[i], true);
@@ -36,7 +45,7 @@ contract Signable {
     function setRequiredSigns(uint256 _signs) public onlyThis {
         uint256 consRS = (totalSigners * 3) / 4;
 
-        require(_signs <= totalSigners && _signs >= consRS, "CONS_REQU_SIGNS");
+        require(_signs <= totalSigners && _signs >= consRS, CONS_REQU_SIGNS());
 
         _requiredSigns = _signs;
     }
@@ -45,7 +54,7 @@ contract Signable {
         _signers[_account] = true;
         totalSigners++;
 
-        require(totalSigners <= MAX_NUM_SIGNERS, "NUM_SIGS_CONS");
+        require(totalSigners <= MAX_NUM_SIGNERS, NUM_SIGS_CONS());
 
         emit SignerChanged(address(0), _account);
     }
@@ -54,16 +63,15 @@ contract Signable {
         _signers[_account] = false;
         totalSigners--;
 
-        require(totalSigners >= MIN_NUM_SIGNERS, "NUM_SIGS_CONS");
+        require(totalSigners >= MIN_NUM_SIGNERS, NUM_SIGS_CONS());
 
         emit SignerChanged(_account, address(0));
     }
 
     function flipSignerAddress(address _old, address _new) public onlyThis {
-        require(_signers[_old], "not signer");
-        require(_old != _new, "the same address");
-        require(!_signers[_new], "already signer");
-        require(_new != address(0), "zero address");
+        require(_old != _new || _new != address(0), WrongAddressSet());
+        require(_signers[_old], NotSigner());
+        require(!_signers[_new], AlreadySigner());
 
         _signers[_old] = false;
         _signers[_new] = true;
@@ -76,12 +84,12 @@ contract Signable {
     }
 
     modifier onlySigner() {
-        require(_signers[msg.sender], "No permission");
+        require(_signers[msg.sender], OnlySigner());
         _;
     }
 
     modifier onlyThis() {
-        require(msg.sender == address(this), "Call must come from this contract.");
+        require(msg.sender == address(this), OnlyThis());
         _;
     }
 }
