@@ -8,6 +8,7 @@
     "build": "hardhat compile",
     "dev": "hardhat node",
     "test": "hardhat test",
+    "coverage": "hardhat coverage",
     "flatten": "hardhat flatten",
     "lint": "solhint contracts/**/*.sol",
     "prettier": "prettier --write ./contracts/**/*.sol"
