@@ -6,6 +6,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IOwnable} from "../interfaces/IOwnable.sol";
 import {ISafeStorage} from "../interfaces/ISafeStorage.sol";
 import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
+import {Errors} from "../libs/Errors.sol";
 
 contract Timelock is Ownable {
 
@@ -56,8 +57,8 @@ contract Timelock is Ownable {
     );
 
     constructor(address _safeStorage, uint256 _delay) Ownable(msg.sender) {
-        require(_delay >= MINIMUM_DELAY, "Timelock::constructor: Delay must exceed minimum delay.");
-        require(_delay <= MAXIMUM_DELAY, "Timelock::constructor: Delay must not exceed maximum delay.");
+        if (_delay < MINIMUM_DELAY) revert Errors.DelayTooLow();
+        if (_delay > MAXIMUM_DELAY) revert Errors.DelayTooHigh();
 
         safeStorage = _safeStorage;
         delay = _delay;
@@ -68,22 +69,19 @@ contract Timelock is Ownable {
     fallback() external payable {}
 
     receive() external payable {
-        require(false, "Dont accept direct ether deposit");
+        revert Errors.CallFailed();
     }
 
     function setDelay(uint256 _delay) public onlyThis {
-        require(_delay >= MINIMUM_DELAY, "Timelock::setDelay: Delay must exceed minimum delay.");
-        require(_delay <= MAXIMUM_DELAY, "Timelock::setDelay: Delay must not exceed maximum delay.");
+        if (_delay < MINIMUM_DELAY) revert Errors.DelayTooLow();
+        if (_delay > MAXIMUM_DELAY) revert Errors.DelayTooHigh();
         delay = _delay;
 
         emit NewDelay(delay);
     }
 
     function queueTransaction(Transaction memory _tx) public onlyOwner {
-        require(
-            _tx.eta >= _getBlockTimestamp() + delay,
-            "Timelock::queueTransaction: Estimated execution block must satisfy delay."
-        );
+        if (_tx.eta < _getBlockTimestamp() + delay) revert Errors.ProposalExpired();
 
         queuedTransactions[_tx.hash] = true;
 
@@ -97,15 +95,9 @@ contract Timelock is Ownable {
     }
 
     function executeTransaction(Transaction memory _tx) public payable onlyOwner returns (bytes memory returnData) {
-        require(queuedTransactions[_tx.hash], "Timelock::executeTransaction: Transaction hasn't been queued.");
-        require(
-            _getBlockTimestamp() >= _tx.eta,
-            "Timelock::executeTransaction: Transaction hasn't surpassed time lock."
-        );
-        require(
-            _getBlockTimestamp() <= _tx.eta + TimelockLibrary.GRACE_PERIOD,
-            "Timelock::executeTransaction: Transaction is stale."
-        );
+        if (!queuedTransactions[_tx.hash]) revert Errors.NotQueued();
+        if (_getBlockTimestamp() < _tx.eta) revert Errors.ProposalExpired();
+        if (_getBlockTimestamp() > _tx.eta + TimelockLibrary.GRACE_PERIOD) revert Errors.ProposalStale();
 
         queuedTransactions[_tx.hash] = false;
 
@@ -113,9 +105,7 @@ contract Timelock is Ownable {
         if (_tx.callFrom == safeStorage) {
             // solium-disable-next-line security/no-call-value
             (success, returnData) = ISafeStorage(safeStorage).execute{value: msg.value}(
-                _tx.target,
-                _tx.value,
-                _tx.data
+                ISafeStorage.CallRequest({target: _tx.target, value: _tx.value, data: _tx.data})
             );
 
             emit ExecuteTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
@@ -125,7 +115,7 @@ contract Timelock is Ownable {
 
         // solium-disable-next-line security/no-call-value
         (success, returnData) = _tx.target.call{value: _tx.value}(_tx.data);
-        require(success, "Timelock::executeTransaction: Transaction execution reverted.");
+        if (!success) revert Errors.CallFailed();
 
         emit ExecuteTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
 
@@ -138,7 +128,7 @@ contract Timelock is Ownable {
     }
 
     modifier onlyThis() {
-        require(msg.sender == address(this), "Timelock: Call must come from this contract.");
+        if (msg.sender != address(this)) revert Errors.OnlyTimelock();
         _;
     }
 }

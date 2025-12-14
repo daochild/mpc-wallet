@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.20;
 
+import {Errors} from "../libs/Errors.sol";
+
 contract Signable {
     uint256 public constant MIN_NUM_SIGNERS = 4;
     uint256 public constant MAX_NUM_SIGNERS = 100;
@@ -16,7 +18,7 @@ contract Signable {
     event SignerChanged(address prev, address next);
 
     constructor(address[] memory _accounts) {
-        require(_accounts.length >= MIN_NUM_SIGNERS, "Num signers consensus not reached");
+        if (_accounts.length < MIN_NUM_SIGNERS) revert Errors.NotSigner();
 
         for (uint256 i; i < _accounts.length; i++) {
             _setSigner(_accounts[i], true);
@@ -39,7 +41,7 @@ contract Signable {
     function setRequiredSigns(uint256 _signs) public onlyThis {
         uint256 consRS = (totalSigners * 3) / 4;
 
-        require(_signs <= totalSigners && _signs >= consRS, "CONS_REQU_SIGNS");
+        if (_signs > totalSigners || _signs < consRS) revert Errors.WrongStatus();
 
         _requiredSigns = _signs;
     }
@@ -48,7 +50,7 @@ contract Signable {
         _signers[_account] = true;
         totalSigners++;
 
-        require(totalSigners <= MAX_NUM_SIGNERS, "NUM_SIGS_CONS");
+        if (totalSigners > MAX_NUM_SIGNERS) revert Errors.WrongStatus();
 
         emit SignerChanged(address(0), _account);
     }
@@ -57,16 +59,16 @@ contract Signable {
         _signers[_account] = false;
         totalSigners--;
 
-        require(totalSigners >= MIN_NUM_SIGNERS, "NUM_SIGS_CONS");
+        if (totalSigners < MIN_NUM_SIGNERS) revert Errors.WrongStatus();
 
         emit SignerChanged(_account, address(0));
     }
 
     function flipSignerAddress(address _old, address _new) public onlyThis {
-        require(_signers[_old], "not signer");
-        require(_old != _new, "the same address");
-        require(!_signers[_new], "already signer");
-        require(_new != address(0), "zero address");
+        if (!_signers[_old]) revert Errors.NotSigner();
+        if (_old == _new) revert Errors.WrongStatus();
+        if (_signers[_new]) revert Errors.AlreadySigned();
+        if (_new == address(0)) revert Errors.ZeroAddress();
 
         _signers[_old] = false;
         _signers[_new] = true;
@@ -79,12 +81,12 @@ contract Signable {
     }
 
     modifier onlySigner() {
-        require(_signers[msg.sender], "No permission");
+        if (!_signers[msg.sender]) revert Errors.NotSigner();
         _;
     }
 
     modifier onlyThis() {
-        require(msg.sender == address(this), "Call must come from this contract.");
+        if (msg.sender != address(this)) revert Errors.OnlyTimelock();
         _;
     }
 }

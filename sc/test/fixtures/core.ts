@@ -120,14 +120,14 @@ export async function createProposal(
     creator: SignerWithAddress,
     proposal: ProposalInput
 ): Promise<bigint> {
-    await multisig.connect(creator).createAndSign(
-        proposal.targets,
-        proposal.values,
-        proposal.signatures,
-        proposal.calldatas,
-        proposal.description,
-        proposal.callFrom
-    );
+    await multisig.connect(creator).createAndSign({
+        targets: proposal.targets,
+        values: proposal.values,
+        signatures: proposal.signatures,
+        calldatas: proposal.calldatas,
+        description: proposal.description,
+        callFrom: proposal.callFrom,
+    });
 
     return await multisig.proposalCount();
 }

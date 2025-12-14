@@ -5,6 +5,7 @@ pragma solidity ^0.8.20;
 import {Signable} from "./Signable.sol";
 import {ITimelock} from "../interfaces/ITimelock.sol";
 import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
+import {Errors} from "../libs/Errors.sol";
 
 contract Multisig is Signable {
     enum Status {
@@ -36,6 +37,15 @@ contract Multisig is Signable {
         uint256 initiatedAt;
     }
 
+    struct ProposalData {
+        address[] targets;
+        uint256[] values;
+        string[] signatures;
+        bytes[] calldatas;
+        string description;
+        address callFrom;
+    }
+
     mapping(uint256 => Proposal) public proposals;
     mapping(address => mapping(uint256 => bool)) public votedBy;
 
@@ -50,34 +60,28 @@ contract Multisig is Signable {
     event Cancelled(uint256 id);
 
     constructor(address _timelock, address[] memory _accounts) Signable(_accounts) {
-        require(_timelock != address(0), "Timelock zero");
+        if (_timelock == address(0)) revert Errors.ZeroAddress();
 
         timelock = _timelock;
     }
 
-    function createAndSign(
-        address[] memory targets,
-        uint256[] memory values,
-        string[] memory signatures,
-        bytes[] memory calldatas,
-        string memory description,
-        address callFrom // Pass SAFE STORAGE address if want interact with it
-    ) external onlySigner {
-        require(
-            targets.length == values.length &&
-                targets.length == signatures.length &&
-                targets.length == calldatas.length,
-            "Wrong arrays length"
-        );
+    function createAndSign(ProposalData memory data) external onlySigner {
+        if (
+            data.targets.length != data.values.length ||
+            data.targets.length != data.signatures.length ||
+            data.targets.length != data.calldatas.length
+        ) {
+            revert Errors.ArrayLengthMismatch();
+        }
 
         Proposal memory proposal;
-        proposal.targets = targets;
-        proposal.values = values;
-        proposal.signatures = signatures;
-        proposal.calldatas = calldatas;
-        proposal.description = description;
+        proposal.targets = data.targets;
+        proposal.values = data.values;
+        proposal.signatures = data.signatures;
+        proposal.calldatas = data.calldatas;
+        proposal.description = data.description;
         proposal.proposer = msg.sender;
-        proposal.callFrom = callFrom;
+        proposal.callFrom = data.callFrom;
         proposal.signs = 1;
         proposal.initiatedAt = block.timestamp;
 
@@ -91,8 +95,8 @@ contract Multisig is Signable {
     }
 
     function sign(uint256 _proposalId) external onlySigner {
-        require(getStatus(_proposalId) == Status.INITIALIZED, "Wrong status");
-        require(!votedBy[msg.sender][_proposalId], "Already signed");
+        if (getStatus(_proposalId) != Status.INITIALIZED) revert Errors.WrongStatus();
+        if (votedBy[msg.sender][_proposalId]) revert Errors.AlreadySigned();
 
         votedBy[msg.sender][_proposalId] = true;
 
@@ -122,12 +126,9 @@ contract Multisig is Signable {
 
     // _paidFromStorage - if call withdraw or ether should be paid from storage contract
     function execute(uint256 _proposalId, bool _paidFromStorage) public payable onlySigner {
-        if (_paidFromStorage) {
-            require(msg.value == 0, "Pay from storage");
-        }
+        if (_paidFromStorage && msg.value != 0) revert Errors.PayFromStorage();
 
-        require(getStatus(_proposalId) == Status.QUEUED, "Wrong status");
-
+        if (getStatus(_proposalId) != Status.QUEUED) revert Errors.WrongStatus();
         Proposal storage proposal = proposals[_proposalId];
         proposal.status = Status.EXECUTED; // block status
         TimelockLibrary.Transaction memory txn;
@@ -149,7 +150,7 @@ contract Multisig is Signable {
     function cancel(uint256 _proposalId) external onlySigner {
         Status status = getStatus(_proposalId);
 
-        require(status == Status.INITIALIZED || status == Status.QUEUED, "Wrong status");
+        if (status != Status.INITIALIZED && status != Status.QUEUED) revert Errors.WrongStatus();
 
         Proposal storage proposal = proposals[_proposalId];
         proposal.status = Status.CANCELLED;
@@ -219,10 +220,10 @@ contract Multisig is Signable {
     // @dev method should be called only from timelock contract.
     // Use this one for changes admin data.
     function adminCall(bytes memory data) public {
-        require(msg.sender == timelock, "Only timelock");
+        if (msg.sender != timelock) revert Errors.OnlyTimelock();
 
         (bool success, ) = address(this).call(data);
 
-        require(success, "admin call failed");
+        if (!success) revert Errors.AdminCallFailed();
     }
 }

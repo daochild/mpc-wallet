@@ -1,6 +1,6 @@
+import { expect } from "chai";
+import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { expect } from "chai"
-import { ethers } from "hardhat"
 import { deployCoreFixture, buildSingleActionProposal, createProposal, queueProposal } from "./fixtures/core";
 import { computeTxnHash, status } from "./helpers/proposals";
 import type { CoreFixture } from "./fixtures/core";
@@ -38,9 +38,8 @@ describe("AnythingInOne", function () {
             );
 
             await fixture.multisig.connect(fixture.owner2).sign(proposalId);
-            await expect(fixture.multisig.connect(fixture.owner2).sign(proposalId)).to.be.revertedWith(
-                "Already signed"
-            );
+            await expect(fixture.multisig.connect(fixture.owner2).sign(proposalId))
+                .to.be.revertedWithCustomError(fixture.multisig, "AlreadySigned");
         });
 
         it("cancels proposal once signing window expires", async () => {
@@ -86,7 +85,8 @@ describe("AnythingInOne", function () {
                 buildSingleActionProposal({ target: fixture.other.address, callFrom: fixture.safeStorage.target })
             );
 
-            await expect(fixture.multisig.execute(proposalId, false)).to.be.revertedWith("Wrong status");
+            await expect(fixture.multisig.connect(fixture.owner1).execute(proposalId, false))
+                .to.be.revertedWithCustomError(fixture.multisig, "WrongStatus");
         });
 
         it("executes ERC20 transfer proposal", async () => {
@@ -129,7 +129,8 @@ describe("AnythingInOne", function () {
             await fixture.multisig.connect(fixture.owner1).cancel(proposalId);
 
             expect(await fixture.multisig.getStatus(proposalId)).to.equal(BigInt(status.CANCELLED));
-            await expect(fixture.multisig.execute(proposalId, false)).to.be.revertedWith("Wrong status");
+            await expect(fixture.multisig.connect(fixture.owner1).execute(proposalId, false))
+                .to.be.revertedWithCustomError(fixture.multisig, "WrongStatus");
         });
     });
 
@@ -140,7 +141,7 @@ describe("AnythingInOne", function () {
             const proposalId = await createProposal(
                 fixture.multisig,
                 fixture.owner1,
-                buildSingleActionProposal({ target: fixture.other.address, callFrom: fixture.safeStorage.target })
+                buildSingleActionProposal({ target: fixture.other.address, value: 1n, callFrom: fixture.safeStorage.target })
             );
 
             await fixture.multisig.connect(fixture.owner2).sign(proposalId);
@@ -158,9 +159,9 @@ describe("AnythingInOne", function () {
                 eta
             );
 
-            const queueEvent = receipt?.logs.find((log) => log.fragment?.name === "QueueTransaction");
-            expect(queueEvent).to.not.equal(undefined);
-            expect(queueEvent?.args?.hash).to.equal(expectedHash);
+            // Verify transaction was queued in timelock
+            const isQueued = await fixture.timelock.queuedTransactions(expectedHash);
+            expect(isQueued).to.equal(true);
         });
     });
 

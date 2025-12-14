@@ -5,6 +5,7 @@ pragma solidity ^0.8.20;
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Errors} from "../libs/Errors.sol";
 
 contract SafeStorage is Ownable, ERC721Holder, ERC1155Holder {
     event Received(address indexed from, uint256 indexed amount);
@@ -26,14 +27,24 @@ contract SafeStorage is Ownable, ERC721Holder, ERC1155Holder {
         }
     }
 
-    function execute(
-        address _target,
-        uint256 _value,
-        bytes memory _data
-    ) external payable virtual onlyOwner returns (bool success, bytes memory result) {
-        require(address(this).balance + msg.value >= _value, "low ether balance");
+    struct CallRequest {
+        address target;
+        uint256 value;
+        bytes data;
+    }
 
-        (success, result) = _target.call{value: _value}(_data);
+    function execute(CallRequest calldata request)
+        external
+        payable
+        virtual
+        onlyOwner
+        returns (bool success, bytes memory result)
+    {
+        if (address(this).balance + msg.value < request.value) {
+            revert Errors.InsufficientBalance();
+        }
+
+        (success, result) = request.target.call{value: request.value}(request.data);
 
         if (!success) {
             // Next 5 lines from https://ethereum.stackexchange.com/a/83577
