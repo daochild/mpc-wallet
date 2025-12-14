@@ -3,12 +3,11 @@
 pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import {IOwnable} from "../interfaces/IOwnable.sol";
 import {ISafeStorage} from "../interfaces/ISafeStorage.sol";
 import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
 
 contract Timelock is Ownable {
-    using SafeMath for uint256;
 
     struct Transaction {
         address callFrom;
@@ -56,7 +55,7 @@ contract Timelock is Ownable {
         uint256 eta
     );
 
-    constructor(address _safeStorage, uint256 _delay) {
+    constructor(address _safeStorage, uint256 _delay) Ownable(IOwnable(_safeStorage).owner()) {
         require(_delay >= MINIMUM_DELAY, "Timelock::constructor: Delay must exceed minimum delay.");
         require(_delay <= MAXIMUM_DELAY, "Timelock::constructor: Delay must not exceed maximum delay.");
 
@@ -80,7 +79,7 @@ contract Timelock is Ownable {
 
     function queueTransaction(Transaction memory _tx) public onlyOwner {
         require(
-            _tx.eta >= _getBlockTimestamp().add(delay),
+            _tx.eta >= _getBlockTimestamp() + delay,
             "Timelock::queueTransaction: Estimated execution block must satisfy delay."
         );
 
@@ -102,7 +101,7 @@ contract Timelock is Ownable {
             "Timelock::executeTransaction: Transaction hasn't surpassed time lock."
         );
         require(
-            _getBlockTimestamp() <= _tx.eta.add(TimelockLibrary.GRACE_PERIOD),
+            _getBlockTimestamp() <= _tx.eta + TimelockLibrary.GRACE_PERIOD,
             "Timelock::executeTransaction: Transaction is stale."
         );
 

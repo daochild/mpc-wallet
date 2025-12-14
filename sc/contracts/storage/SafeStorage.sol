@@ -2,15 +2,17 @@
 
 pragma solidity ^0.8.20;
 
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {ERC165Storage} from "@openzeppelin/contracts/utils/introspection/ERC165Storage.sol";
 import {ERC721Holder} from "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import {ERC1155Holder, ERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import {ERC1155Holder} from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SafeStorage is ERC165Storage, Ownable, ERC721Holder, ERC1155Holder {
+contract SafeStorage is Ownable, ERC721Holder, ERC1155Holder {
     event Received(address indexed from, uint256 indexed amount);
     event ReceivedFallback(address indexed from, uint256 indexed amount);
+
+    constructor(address _admin) Ownable(_admin) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     fallback() external payable {
         if (msg.value > 0) {
@@ -41,11 +43,5 @@ contract SafeStorage is ERC165Storage, Ownable, ERC721Holder, ERC1155Holder {
             }
             revert(abi.decode(result, (string)));
         }
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override(ERC1155Receiver, ERC165Storage) returns (bool) {
-        return ERC1155Receiver.supportsInterface(interfaceId) || ERC165Storage.supportsInterface(interfaceId);
     }
 }
