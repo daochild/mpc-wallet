@@ -4,12 +4,13 @@
   "description": "Multi party computation (MPC) wallet contract",
   "private": true,
   "scripts": {
-    "build": "npx hardhat compile",
-    "dev": "npx hardhat node",
-    "test": "npx hardhat test",
-    "flatten": "npx hardhat flatten",
-    "lint": "solhint",
-    "prettier": "npx prettier --write ./contracts/**/*.sol"
+    "prebuild": "npm run prettier",
+    "build": "hardhat compile",
+    "dev": "hardhat node",
+    "test": "hardhat test",
+    "flatten": "hardhat flatten",
+    "lint": "solhint contracts/**/*.sol",
+    "prettier": "prettier --write ./contracts/**/*.sol"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
