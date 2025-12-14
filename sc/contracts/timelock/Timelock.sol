@@ -20,10 +20,10 @@ contract Timelock is Ownable {
         uint256 eta;
     }
 
-    uint256 public constant MINIMUM_DELAY = 6 hours;
-    uint256 public constant MAXIMUM_DELAY = 30 days;
+    uint256 internal constant MINIMUM_DELAY = 6 hours;
+    uint256 internal constant MAXIMUM_DELAY = 30 days;
 
-    address public safeStorage;
+    address public immutable safeStorage;
     uint256 public delay;
 
     mapping(bytes32 => bool) public queuedTransactions;
@@ -81,7 +81,9 @@ contract Timelock is Ownable {
     }
 
     function queueTransaction(Transaction memory _tx) public onlyOwner {
-        if (_tx.eta < _getBlockTimestamp() + delay) revert Errors.ProposalExpired();
+        unchecked {
+            if (_tx.eta < block.timestamp + delay) revert Errors.ProposalExpired();
+        }
 
         queuedTransactions[_tx.hash] = true;
 
@@ -95,23 +97,31 @@ contract Timelock is Ownable {
     }
 
     function executeTransaction(Transaction memory _tx) public payable onlyOwner returns (bytes memory returnData) {
-        if (!queuedTransactions[_tx.hash]) revert Errors.NotQueued();
-        if (_getBlockTimestamp() < _tx.eta) revert Errors.ProposalExpired();
-        if (_getBlockTimestamp() > _tx.eta + TimelockLibrary.GRACE_PERIOD) revert Errors.ProposalStale();
+         if (!queuedTransactions[_tx.hash]) revert Errors.NotQueued();
+        
+        uint256 currentTime = block.timestamp;
+        uint256 eta = _tx.eta;
+        
+        if (currentTime < eta) revert Errors.ProposalExpired();
+        
+        unchecked {
+            if (currentTime > eta + TimelockLibrary.GRACE_PERIOD) revert Errors.ProposalStale();
+        }
 
         queuedTransactions[_tx.hash] = false;
 
-        bool success;
-        if (_tx.callFrom == safeStorage) {
-            // solium-disable-next-line security/no-call-value
-            (success, returnData) = ISafeStorage(safeStorage).execute{value: msg.value}(
-                ISafeStorage.CallRequest({target: _tx.target, value: _tx.value, data: _tx.data})
-            );
+         bool success;
+        address cachedSafeStorage = safeStorage;
+        if (_tx.callFrom == cachedSafeStorage) {
+             // solium-disable-next-line security/no-call-value
+            (success, returnData) = ISafeStorage(cachedSafeStorage).execute{value: msg.value}(
+                 ISafeStorage.CallRequest({target: _tx.target, value: _tx.value, data: _tx.data})
+             );
 
             emit ExecuteTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
 
             return returnData;
-        }
+         }
 
         // solium-disable-next-line security/no-call-value
         (success, returnData) = _tx.target.call{value: _tx.value}(_tx.data);
@@ -120,11 +130,6 @@ contract Timelock is Ownable {
         emit ExecuteTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
 
         return returnData;
-    }
-
-    function _getBlockTimestamp() internal view returns (uint256) {
-        // solium-disable-next-line security/no-block-members
-        return block.timestamp;
     }
 
     modifier onlyThis() {

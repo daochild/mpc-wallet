@@ -52,7 +52,7 @@ contract Multisig is Signable {
     /// @notice The total number of proposals
     uint256 public proposalCount;
 
-    address public timelock;
+    address public immutable timelock;
 
     event ProposalInitialized(uint256 id, address proposer);
     event Signed(uint256 id, address signer);
@@ -65,7 +65,7 @@ contract Multisig is Signable {
         timelock = _timelock;
     }
 
-    function createAndSign(ProposalData memory data) external onlySigner {
+    function createAndSign(ProposalData calldata data) external onlySigner {
         if (
             data.targets.length != data.values.length ||
             data.targets.length != data.signatures.length ||
@@ -74,7 +74,12 @@ contract Multisig is Signable {
             revert Errors.ArrayLengthMismatch();
         }
 
-        Proposal memory proposal;
+        uint256 proposalId;
+        unchecked {
+            proposalId = ++proposalCount;
+        }
+        
+        Proposal storage proposal = proposals[proposalId];
         proposal.targets = data.targets;
         proposal.values = data.values;
         proposal.signatures = data.signatures;
@@ -84,11 +89,6 @@ contract Multisig is Signable {
         proposal.callFrom = data.callFrom;
         proposal.signs = 1;
         proposal.initiatedAt = block.timestamp;
-
-        proposalCount++;
-
-        uint256 proposalId = proposalCount;
-        proposals[proposalId] = proposal;
 
         emit ProposalInitialized(proposalId, msg.sender);
         emit Signed(proposalId, msg.sender);
@@ -101,25 +101,39 @@ contract Multisig is Signable {
         votedBy[msg.sender][_proposalId] = true;
 
         Proposal storage proposal = proposals[_proposalId];
-        proposal.signs++;
-        if (proposal.signs == requiredSigns()) {
-            proposal.status = Status.QUEUED; // block status
-            proposal.eta = ITimelock(timelock).delay() + block.timestamp;
-            TimelockLibrary.Transaction memory txn;
-            for (uint256 i; i < proposal.targets.length; i++) {
-                txn.target = proposal.targets[i];
-                txn.value = proposal.values[i];
-                txn.signature = proposal.signatures[i];
-                txn.data = proposal.calldatas[i];
-                txn.eta = proposal.eta;
-                txn.hash = keccak256(
-                    abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, txn.eta)
-                );
-                txn.callFrom = proposal.callFrom;
-
-                ITimelock(timelock).queueTransaction(txn);
-            }
+        uint256 newSigns;
+        unchecked {
+            newSigns = ++proposal.signs;
         }
+        
+        uint256 required = requiredSigns();
+        if (newSigns == required) {
+            proposal.status = Status.QUEUED; // block status
+            uint256 eta = ITimelock(timelock).delay() + block.timestamp;
+            proposal.eta = eta;
+            
+             TimelockLibrary.Transaction memory txn;
+            txn.callFrom = proposal.callFrom;
+            txn.eta = eta;
+            
+            uint256 targetsLength = proposal.targets.length;
+            for (uint256 i; i < targetsLength;) {
+                 txn.target = proposal.targets[i];
+                 txn.value = proposal.values[i];
+                 txn.signature = proposal.signatures[i];
+                 txn.data = proposal.calldatas[i];
+                 txn.hash = keccak256(
+                    abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, eta)
+                 );
+                 
+
+                 ITimelock(timelock).queueTransaction(txn);
+                
+                unchecked {
+                    ++i;
+                }
+             }
+         }
 
         emit Signed(_proposalId, msg.sender);
     }
@@ -129,20 +143,28 @@ contract Multisig is Signable {
         if (_paidFromStorage && msg.value != 0) revert Errors.PayFromStorage();
 
         if (getStatus(_proposalId) != Status.QUEUED) revert Errors.WrongStatus();
-        Proposal storage proposal = proposals[_proposalId];
-        proposal.status = Status.EXECUTED; // block status
-        TimelockLibrary.Transaction memory txn;
-        for (uint256 i; i < proposal.targets.length; i++) {
-            txn.target = proposal.targets[i];
-            txn.value = proposal.values[i];
-            txn.signature = proposal.signatures[i];
-            txn.data = proposal.calldatas[i];
-            txn.eta = proposal.eta;
-            txn.hash = keccak256(abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, txn.eta));
-            txn.callFrom = proposal.callFrom;
+        
+         Proposal storage proposal = proposals[_proposalId];
+         proposal.status = Status.EXECUTED; // block status
+         
+         TimelockLibrary.Transaction memory txn;
+        txn.eta = proposal.eta;
+        txn.callFrom = proposal.callFrom;
+        
+        uint256 targetsLength = proposal.targets.length;
+        for (uint256 i; i < targetsLength;) {
+             txn.target = proposal.targets[i];
+             txn.value = proposal.values[i];
+             txn.signature = proposal.signatures[i];
+             txn.data = proposal.calldatas[i];
+             txn.hash = keccak256(abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, proposal.eta));
 
-            ITimelock(timelock).executeTransaction{value: (_paidFromStorage) ? 0 : txn.value}(txn);
-        }
+             ITimelock(timelock).executeTransaction{value: (_paidFromStorage) ? 0 : txn.value}(txn);
+            
+            unchecked {
+                ++i;
+            }
+         }
 
         emit Executed(_proposalId);
     }
@@ -155,18 +177,24 @@ contract Multisig is Signable {
         Proposal storage proposal = proposals[_proposalId];
         proposal.status = Status.CANCELLED;
 
-        TimelockLibrary.Transaction memory txn;
-        for (uint256 i; i < proposal.targets.length; i++) {
-            txn.target = proposal.targets[i];
-            txn.value = proposal.values[i];
-            txn.signature = proposal.signatures[i];
-            txn.data = proposal.calldatas[i];
-            txn.eta = proposal.eta;
-            txn.hash = keccak256(abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, txn.eta));
-            txn.callFrom = proposal.callFrom;
+         TimelockLibrary.Transaction memory txn;
+        txn.eta = proposal.eta;
+        txn.callFrom = proposal.callFrom;
+        
+        uint256 targetsLength = proposal.targets.length;
+        for (uint256 i; i < targetsLength;) {
+             txn.target = proposal.targets[i];
+             txn.value = proposal.values[i];
+             txn.signature = proposal.signatures[i];
+             txn.data = proposal.calldatas[i];
+             txn.hash = keccak256(abi.encode(_proposalId, i, txn.target, txn.value, txn.signature, txn.data, proposal.eta));
 
-            ITimelock(timelock).cancelTransaction(txn);
-        }
+             ITimelock(timelock).cancelTransaction(txn);
+            
+            unchecked {
+                ++i;
+            }
+         }
 
         emit Cancelled(_proposalId);
     }
@@ -188,31 +216,30 @@ contract Multisig is Signable {
     }
 
     function getStatus(uint256 _proposalId) public view returns (Status) {
-        Proposal memory p = proposals[_proposalId];
+        Proposal storage p = proposals[_proposalId];
 
-        if (p.status == Status.CANCELLED) {
-            return Status.CANCELLED;
-        }
-        if (p.status == Status.EXECUTED) {
-            return Status.EXECUTED;
-        }
-        if (p.signs > 0) {
-            if (p.eta != 0) {
-                if (p.eta + TimelockLibrary.GRACE_PERIOD <= block.timestamp) {
-                    return Status.CANCELLED;
-                }
-            } else {
-                if (p.initiatedAt + TIME_FOR_SIGNING < block.timestamp) {
-                    return Status.CANCELLED;
-                }
-            }
+        Status currentStatus = p.status;
+        if (currentStatus == Status.CANCELLED) return Status.CANCELLED;
+        if (currentStatus == Status.EXECUTED) return Status.EXECUTED;
+        
+         if (p.signs > 0) {
+            uint256 eta = p.eta;
+             if (eta != 0) {
+                if (eta + TimelockLibrary.GRACE_PERIOD <= block.timestamp) {
+                     return Status.CANCELLED;
+                 }
+             } else {
+                 if (p.initiatedAt + TIME_FOR_SIGNING < block.timestamp) {
+                     return Status.CANCELLED;
+                 }
+             }
 
-            if (requiredSigns() == p.signs) {
-                return Status.QUEUED;
-            }
+             if (requiredSigns() == p.signs) {
+                 return Status.QUEUED;
+             }
 
-            return Status.INITIALIZED;
-        }
+             return Status.INITIALIZED;
+         }
 
         return Status.EMPTY;
     }

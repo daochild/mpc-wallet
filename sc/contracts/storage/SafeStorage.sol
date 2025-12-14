@@ -40,19 +40,21 @@ contract SafeStorage is Ownable, ERC721Holder, ERC1155Holder {
         onlyOwner
         returns (bool success, bytes memory result)
     {
-        if (address(this).balance + msg.value < request.value) {
-            revert Errors.InsufficientBalance();
+        unchecked {
+            if (address(this).balance + msg.value < request.value) {
+                revert Errors.InsufficientBalance();
+            }
         }
 
         (success, result) = request.target.call{value: request.value}(request.data);
 
         if (!success) {
-            // Next 5 lines from https://ethereum.stackexchange.com/a/83577
-            if (result.length < 68) revert();
-            assembly {
-                result := add(result, 0x04)
-            }
-            revert(abi.decode(result, (string)));
-        }
-    }
+             // Next 5 lines from https://ethereum.stackexchange.com/a/83577
+             if (result.length < 68) revert();
+             assembly {
+                 result := add(result, 0x04)
+             }
+             revert(abi.decode(result, (string)));
+         }
+     }
 }
