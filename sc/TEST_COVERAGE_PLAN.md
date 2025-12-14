@@ -1,4 +1,4 @@
-ntr# Test Coverage Plan & Implementation
+# Test Coverage Plan & Implementation
 
 ## Overview
 Comprehensive test suite for MPC Wallet smart contracts using Hardhat + ethers v6 with fixture-based approach.

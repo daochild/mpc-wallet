@@ -181,6 +181,53 @@ describe("AnythingInOne", function () {
 
             expect(await erc721.balanceOf(fixture.safeStorage.target)).to.equal(1n);
             expect(await erc1155.balanceOf(fixture.safeStorage.target, 1n)).to.equal(100n);
+
+            // withdraw ERC721
+            const erc721TransferData = erc721.interface.encodeFunctionData("safeTransferFrom(address,address,uint256)", [
+                fixture.safeStorage.target,
+                fixture.other.address,
+                1n
+            ]);
+            const erc721ProposalId = await createProposal(
+                fixture.multisig,
+                fixture.owner1,
+                buildSingleActionProposal({
+                    target: erc721.target as string,
+                    value: 0n,
+                    signature: "safeTransferFrom(address,address,uint256)",
+                    calldata: erc721TransferData,
+                    callFrom: fixture.safeStorage.target,
+                })
+            );
+            let eta = await queueProposal(fixture.multisig, [fixture.owner2, fixture.owner3], erc721ProposalId);
+            await time.increaseTo(eta + 1n);
+            await fixture.multisig.connect(fixture.owner3).execute(erc721ProposalId, false);
+            expect(await erc721.balanceOf(fixture.other.address)).to.equal(1n);
+
+            // withdraw ERC1155
+            const erc1155TransferData = erc1155.interface.encodeFunctionData("safeTransferFrom(address,address,uint256,uint256,bytes)", [
+                fixture.safeStorage.target,
+                fixture.other.address,
+                1n,
+                100n,
+                "0x"
+            ]);
+            const erc1155ProposalId = await createProposal(
+                fixture.multisig,
+                fixture.owner1,
+                buildSingleActionProposal({
+                    target: erc1155.target as string,
+                    value: 0n,
+                    signature: "safeTransferFrom(address,address,uint256,uint256,bytes)",
+                    calldata: erc1155TransferData,
+                    callFrom: fixture.safeStorage.target,
+                })
+            );
+            eta = await queueProposal(fixture.multisig, [fixture.owner2, fixture.owner3], erc1155ProposalId);
+            await time.increaseTo(eta + 1n);
+            await fixture.multisig.connect(fixture.owner3).execute(erc1155ProposalId, false);
+            expect(await erc1155.balanceOf(fixture.other.address, 1n)).to.equal(100n);
+
         });
     });
 });
