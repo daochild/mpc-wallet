@@ -25,6 +25,18 @@ module.exports = {
       url: "http://127.0.0.1:8545"
     },
     hardhat: {
+    },
+    mainnet: {
+      url: process.env.MAINNET_URL || "https://",
+      chainId: process.env.CHAIN_ID ? Number(process.env.CHAIN_ID) : 1,
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    devnet: {
+      url: process.env.DEVNET_URL || "https://",
+      chainId: process.env.DEVNET_CHAIN_ID ? Number(process.env.DEVNET_CHAIN_ID) : 1337,
+      accounts:
+        process.env.DEVNET_PRIVATE_KEY !== undefined ? [process.env.DEVNET_PRIVATE_KEY] : [],
     }
   },
   solidity: {
@@ -46,9 +58,6 @@ module.exports = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts"
-  },
-  mocha: {
-    timeout: 80000
   },
   typechain: {
     outDir: "typechain",

@@ -12,6 +12,9 @@ importers:
 
   .:
     dependencies:
+      '@nomicfoundation/hardhat-network-helpers':
+        specifier: 1.1.2
+        version: 1.1.2(hardhat@2.27.2(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.9.3))(typescript@5.9.3))
       '@openzeppelin/contracts':
         specifier: 5.4.0
         version: 5.4.0

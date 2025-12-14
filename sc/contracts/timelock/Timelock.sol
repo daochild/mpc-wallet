@@ -55,12 +55,14 @@ contract Timelock is Ownable {
         uint256 eta
     );
 
-    constructor(address _safeStorage, uint256 _delay) Ownable(IOwnable(_safeStorage).owner()) {
+    constructor(address _safeStorage, uint256 _delay) Ownable(msg.sender) {
         require(_delay >= MINIMUM_DELAY, "Timelock::constructor: Delay must exceed minimum delay.");
         require(_delay <= MAXIMUM_DELAY, "Timelock::constructor: Delay must not exceed maximum delay.");
 
         safeStorage = _safeStorage;
         delay = _delay;
+
+        _transferOwnership(IOwnable(_safeStorage).owner());
     }
 
     fallback() external payable {}
