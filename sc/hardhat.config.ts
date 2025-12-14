@@ -49,6 +49,10 @@ module.exports = {
   },
   mocha: {
     timeout: 80000
+  },
+  typechain: {
+    outDir: "typechain",
+    target: "ethers-v6",
   }
 } as HardhatUserConfig;
 
