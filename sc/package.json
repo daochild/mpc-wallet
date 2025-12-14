@@ -3,16 +3,13 @@
   "version": "1.0.1",
   "description": "Multi party computation (MPC) wallet contract",
   "private": true,
-  "packageManager": "pnpm@10.25.0",
   "scripts": {
     "build": "npx hardhat compile",
     "dev": "npx hardhat node",
-    "test": "npx hardhat test --network hardhat",
+    "test": "npx hardhat test",
     "flatten": "npx hardhat flatten",
     "lint": "solhint 'contracts/**/*.sol' --ignore-path .solhintignore",
-    "prettier": "npx prettier --write ./contracts/**/*.sol",
-    "lint:js": "eslint .",
-    "lint:js:fix": "eslint . --fix"
+    "prettier": "npx prettier --write ./contracts/**/*.sol"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
@@ -20,11 +17,8 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@types/node": "^22",
-    "@typescript-eslint/parser": "^7.8.0",
+    "@typescript-eslint/parser": "^8.49.0",
     "dotenv": "^16.4.5",
-    "eslint": "^9.39.2",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.32.0",
     "hardhat": "^2.27.2",
     "keccak256": "^1.0.6",
     "merkletreejs": "^0.3.11",
@@ -32,9 +26,6 @@
     "prettier-plugin-solidity": "^1.3.1",
     "solhint": "^4.5.4",
     "typescript": "^5.9.3"
-  },
-  "peerDependencies": {
-    "@nomicfoundation/hardhat-network-helpers": "1.1.2"
   },
   "overrides": {
     "cookie@<0.7.0": ">=0.7.0",
