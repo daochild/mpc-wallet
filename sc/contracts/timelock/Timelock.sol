@@ -9,7 +9,6 @@ import {TimelockLibrary} from "../libs/TimelockLibrary.sol";
 import {Errors} from "../libs/Errors.sol";
 
 contract Timelock is Ownable {
-
     struct Transaction {
         address callFrom;
         bytes32 hash;
@@ -97,31 +96,31 @@ contract Timelock is Ownable {
     }
 
     function executeTransaction(Transaction memory _tx) public payable onlyOwner returns (bytes memory returnData) {
-         if (!queuedTransactions[_tx.hash]) revert Errors.NotQueued();
-        
+        if (!queuedTransactions[_tx.hash]) revert Errors.NotQueued();
+
         uint256 currentTime = block.timestamp;
         uint256 eta = _tx.eta;
-        
+
         if (currentTime < eta) revert Errors.ProposalExpired();
-        
+
         unchecked {
             if (currentTime > eta + TimelockLibrary.GRACE_PERIOD) revert Errors.ProposalStale();
         }
 
         queuedTransactions[_tx.hash] = false;
 
-         bool success;
+        bool success;
         address cachedSafeStorage = safeStorage;
         if (_tx.callFrom == cachedSafeStorage) {
-             // solium-disable-next-line security/no-call-value
+            // solium-disable-next-line security/no-call-value
             (success, returnData) = ISafeStorage(cachedSafeStorage).execute{value: msg.value}(
-                 ISafeStorage.CallRequest({target: _tx.target, value: _tx.value, data: _tx.data})
-             );
+                ISafeStorage.CallRequest({target: _tx.target, value: _tx.value, data: _tx.data})
+            );
 
             emit ExecuteTransaction(_tx.hash, _tx.target, _tx.value, _tx.signature, _tx.data, _tx.eta);
 
             return returnData;
-         }
+        }
 
         // solium-disable-next-line security/no-call-value
         (success, returnData) = _tx.target.call{value: _tx.value}(_tx.data);

@@ -21,7 +21,7 @@ contract Signable {
         uint256 accountsLength = _accounts.length;
         if (accountsLength < MIN_NUM_SIGNERS) revert Errors.NotSigner();
 
-        for (uint256 i; i < accountsLength;) {
+        for (uint256 i; i < accountsLength; ) {
             _setSigner(_accounts[i], true);
             unchecked {
                 ++i;
@@ -35,11 +35,11 @@ contract Signable {
     function requiredSigns() public view returns (uint256) {
         uint256 cachedRequiredSigns = _requiredSigns;
         uint256 cachedTotalSigners = totalSigners;
-        
+
         if (cachedRequiredSigns > cachedTotalSigners) {
             return cachedRequiredSigns;
         }
-        
+
         uint256 threshold = (cachedTotalSigners * 3) / 4;
         return cachedRequiredSigns < threshold ? threshold : cachedRequiredSigns;
     }
@@ -56,7 +56,7 @@ contract Signable {
     }
 
     function addSigner(address _account) public onlyThis {
-         _signers[_account] = true;
+        _signers[_account] = true;
         uint256 newTotal;
         unchecked {
             newTotal = ++totalSigners;
@@ -68,7 +68,7 @@ contract Signable {
     }
 
     function removeSigner(address _account) public onlyThis {
-         _signers[_account] = false;
+        _signers[_account] = false;
         uint256 newTotal;
         unchecked {
             newTotal = --totalSigners;
